@@ -32,7 +32,10 @@ python gradio_breads_app.py
 After the application starts, you will see a URL in the terminal that you can visit in your web browser to interact with the app.
 
 Select an image of bread from the provided options, and click the "Classify Bread" button. The application will then display the image you selected and the most similar reference image based on the classification.
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/master
 ## How It Works
 
 The app uses OpenCV to process images and extract features, and then compares these features with those of reference images to find the most similar match. The comparison is based on the histograms of the images in the CIELAB color space.
