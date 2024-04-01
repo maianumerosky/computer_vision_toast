@@ -51,9 +51,9 @@ def find_most_similar(histograms, reference_histograms, method=cv2.HISTCMP_CORRE
 
 
 reference_images = [
-    'toasted_bread_dataset/pan2_medio_tostado.jpg',
-    'toasted_bread_dataset/pan2_sin_tostar.jpg',
-    'toasted_bread_dataset/pan2_tostado.jpg'
+    'toasted_bread_dataset/toasted.jpg',
+    'toasted_bread_dataset/not_toasted.jpg',
+    'toasted_bread_dataset/very_toasted.jpg'
 ]
 
 reference_histograms = [histograms_of_masked_image(path) for path in reference_images]
@@ -67,40 +67,67 @@ user_images_choices = [
 ]
 
 
-def classify_bread(selected_image_path):
-    histograms = histograms_of_masked_image(selected_image_path)
+def classify_bread(selected_image_index):
+    histograms = histograms_of_masked_image(user_images_choices[selected_image_index])
     most_similar_index = find_most_similar(histograms, reference_histograms)
-    print("Most similar index:", most_similar_index)
-    most_similar_image = cv2.imread(reference_images[most_similar_index])
+    most_similar_image_path = reference_images[most_similar_index]
+    most_similar_image = cv2.imread(most_similar_image_path)
     most_similar_image_rgb = cv2.cvtColor(most_similar_image, cv2.COLOR_BGR2RGB)
+    cv2.putText(most_similar_image_rgb, f"Most similar: {clean_name(most_similar_image_path)}", (70, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
     return most_similar_image_rgb
 
 
-def gallery_selection_handler(selection):
-    if not selection:
-        print("No image selected.")
-        return None
-
-    # The Gradio gallery component returns a list of selected items
-    # If the app is intended for single selection, just take the first item from the list
-    # Here, `selection` is expected to be a list of filepaths
-    if isinstance(selection, list) and selection:
-        # Assuming the first item in the list is the path of interest
-        selected_image_path = selection
-        print("Selected image path:", selected_image_path)
-        return classify_bread(selected_image_path)
-    else:
-        print("Unexpected selection format.")
-        return None
+def clean_name(image_path):
+    removed_folder = image_path.split("/")[-1]
+    removed_extension = removed_folder.split(".")[0]
+    removed_underscore = removed_extension.replace("_", " ")
+    return removed_underscore.capitalize()
 
 
-demo = gr.Interface(
-    fn=gallery_selection_handler,
-    inputs=gr.Gallery(label="Choose a Bread Image", value=user_images_choices, type="filepath", show_label=True,
-                      show_share_button=False, show_download_button=False, interactive=True),
-    outputs=gr.Image(label="Most Similar Reference Image", show_download_button=False),
-    title="Bread Toastedness Classifier",
-    description="Select an image of bread to see which reference image it's most similar to."
-)
+with gr.Blocks(title='Bread toastedness classifier') as demo:
+    gr.Markdown(
+        """
+        # Classify the toastedness of bread!
+        Choose an image below.
+        """)
+    imgs = gr.State()
+    gallery = gr.Gallery(allow_preview=False)
 
-demo.launch()
+
+    def deselect_images():
+        return gr.Gallery(selected_index=None)
+
+
+    def generate_images():
+        images = [cv2.cvtColor(cv2.imread(img), cv2.COLOR_BGR2RGB) for img in user_images_choices]
+        return images, images
+
+
+    demo.load(generate_images, None, [gallery, imgs])
+
+    with gr.Row():
+        selected = gr.Number(show_label=False)
+        classify_btn = gr.Button("Classify selected")
+    deselect_button = gr.Button("Deselect")
+
+    deselect_button.click(deselect_images, None, gallery)
+
+
+    def get_select_index(evt: gr.SelectData):
+        return evt.index
+
+
+    gallery.select(get_select_index, None, selected)
+
+
+    def classify_img(imgs, index):
+        index = int(index)
+        imgs[index] = classify_bread(index)
+        return imgs, imgs
+
+
+    classify_btn.click(classify_img, [imgs, selected], [imgs, gallery])
+
+if __name__ == "__main__":
+    demo.launch()
