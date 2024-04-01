@@ -3,27 +3,27 @@ import cv2
 import numpy as np
 
 
-def histograms_of_masked_img(path):
-    masked_image = mask_img(path)
+def histograms_of_masked_image(path):
+    masked_image = mask_image(path)
     cielab_image = convert_to_cielab(masked_image)
-    return histogram(cielab_image)
+    return histograms(cielab_image)
 
 
-def histogram(cielab_image):
+def histograms(cielab_image):
     mask = np.all(cielab_image != [0, 0, 0], axis=-1)
-    histograms = []
+    histograms_for_each_channel = []
     for i in range(3):  # For L*, a*, and b* channels
         channel = cielab_image[:, :, i][mask]
         hist, _ = np.histogram(channel, bins=256, range=(0, 256))
-        histograms.append(hist)
-    return histograms
+        histograms_for_each_channel.append(hist)
+    return histograms_for_each_channel
 
 
 def convert_to_cielab(image):
     return cv2.cvtColor(image, cv2.COLOR_BGR2Lab)
 
 
-def mask_img(image_path):
+def mask_image(image_path):
     image = cv2.imread(image_path)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -51,52 +51,56 @@ def find_most_similar(histograms, reference_histograms, method=cv2.HISTCMP_CORRE
 
 
 reference_images = [
-    'toasted_bread_dataset/pan2 medio tostado.jpg',
-    'toasted_bread_dataset/pan2 sin tostar.jpg',
-    'toasted_bread_dataset/pan2 tostado.jpg'
+    'toasted_bread_dataset/pan2_medio_tostado.jpg',
+    'toasted_bread_dataset/pan2_sin_tostar.jpg',
+    'toasted_bread_dataset/pan2_tostado.jpg'
 ]
 
-reference_histograms = [histograms_of_masked_img(path) for path in reference_images]
+reference_histograms = [histograms_of_masked_image(path) for path in reference_images]
 
 user_images_choices = [
-    'toasted_bread_dataset/pan1 sin tostar.jpg',
-    'toasted_bread_dataset/pan1 tostado.jpg',
-    'toasted_bread_dataset/pan1 tostado bis.jpg',
-    'toasted_bread_dataset/pan1 medio tostado.jpg',
-    'toasted_bread_dataset/pan2 tostado bis.jpg',
+    'toasted_bread_dataset/pan1_sin_tostar.jpg',
+    'toasted_bread_dataset/pan1_tostado.jpg',
+    'toasted_bread_dataset/pan1_tostado_bis.jpg',
+    'toasted_bread_dataset/pan1_medio_tostado.jpg',
+    'toasted_bread_dataset/pan2_tostado_bis.jpg',
 ]
 
+
 def classify_bread(selected_image_path):
-    # Your existing logic to process the selected image and find the most similar reference image
-    histograms = histograms_of_masked_img(selected_image_path)
+    histograms = histograms_of_masked_image(selected_image_path)
     most_similar_index = find_most_similar(histograms, reference_histograms)
+    print("Most similar index:", most_similar_index)
     most_similar_image = cv2.imread(reference_images[most_similar_index])
     most_similar_image_rgb = cv2.cvtColor(most_similar_image, cv2.COLOR_BGR2RGB)
     return most_similar_image_rgb
 
+
 def gallery_selection_handler(selection):
-    """Handles selection from the gallery to pass the correct image path to the classification function."""
-    # Extract the first file path from the selection
-    if not selection:  # Check if the selection is empty
+    if not selection:
         print("No image selected.")
         return None
 
-    # Since the selection could be a list of tuples, extract the first path
-    image_path = selection[0][0]  # Assuming single selection, get the first item's first element
-    print("Selected image path:", image_path)
+    # The Gradio gallery component returns a list of selected items
+    # If the app is intended for single selection, just take the first item from the list
+    # Here, `selection` is expected to be a list of filepaths
+    if isinstance(selection, list) and selection:
+        # Assuming the first item in the list is the path of interest
+        selected_image_path = selection
+        print("Selected image path:", selected_image_path)
+        return classify_bread(selected_image_path)
+    else:
+        print("Unexpected selection format.")
+        return None
 
-    # Now you can use the image path directly
-    return classify_bread(image_path)
 
-
-# Define the user interface
-iface = gr.Interface(
+demo = gr.Interface(
     fn=gallery_selection_handler,
-    inputs=gr.Gallery(label="Choose a Bread Image", value=user_images_choices, type="filepath"),
-    outputs=gr.Image(label="Most Similar Reference Image"),
-    title="Bread Toastiness Classifier",
+    inputs=gr.Gallery(label="Choose a Bread Image", value=user_images_choices, type="filepath", show_label=True,
+                      show_share_button=False, show_download_button=False, interactive=True),
+    outputs=gr.Image(label="Most Similar Reference Image", show_download_button=False),
+    title="Bread Toastedness Classifier",
     description="Select an image of bread to see which reference image it's most similar to."
 )
 
-# Launch the app
-iface.launch()
+demo.launch()
