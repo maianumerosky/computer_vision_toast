@@ -4,7 +4,7 @@
 Visit https://huggingface.co/spaces/maianume/computer_vision_toast and play!
 
 ## Introduction
-This repository contains a machine learning application built with Gradio and OpenCV for classifying images of bread based on their toastiness level. The app allows users to select an image of bread and then classifies it to find the most similar reference image from a predefined dataset.
+This repository contains a Computer Vision application built with Gradio and OpenCV for classifying images of bread based on their toastiness level. The app allows users to select an image of bread and then classifies it to find the most similar reference image from a predefined dataset.
 
 ## Installation
 
