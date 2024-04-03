@@ -130,4 +130,4 @@ with gr.Blocks(title='Bread toastedness classifier') as demo:
     classify_btn.click(classify_img, [imgs, selected], [imgs, gallery])
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(share=True)
